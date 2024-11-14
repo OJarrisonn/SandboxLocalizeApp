@@ -10,6 +10,7 @@ const LOCATION_TASK_NAME = 'BACKGROUND_LOCATION_TASK';
 export default function Index() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  let [locations, setLocations] = useState<{latitude: number, longitude: number}[]>([]);
 
   async function startBackgroundLocationTask() {
     if (Platform.OS === 'android' && !Device.isDevice) {
@@ -36,9 +37,8 @@ export default function Index() {
     TaskManager.defineTask(LOCATION_TASK_NAME, async () => {
       try {
         const location = await Location.getCurrentPositionAsync({});
-        console.log('Background location:', location);
-        // You can update the state or send the location to your server here
         setLocation(location);
+        setLocations([...locations, {latitude: location.coords.latitude, longitude: location.coords.longitude}]);
         return BackgroundFetch.BackgroundFetchResult.NewData;
       } catch (error) {
         console.error(error);
@@ -59,8 +59,20 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.paragraph}>Location: {text}</Text>
+      <Button title="Produce GeoJSON Line" onPress={() => {console.log(JSON.stringify(createGeoJSONLine(locations))); setLocations([])}} />
     </View>
   );
+}
+
+function createGeoJSONLine(locations: {latitude: number, longitude: number}[]) {
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: locations.map(location => [location.longitude, location.latitude]),
+    },
+  };  
 }
 
 const styles = StyleSheet.create({

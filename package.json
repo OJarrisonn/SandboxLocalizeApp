@@ -43,7 +43,8 @@
     "expo-location": "~18.0.1",
     "expo-device": "~7.0.1",
     "expo-task-manager": "~12.0.3",
-    "expo-background-fetch": "~13.0.3"
+    "expo-background-fetch": "~13.0.3",
+    "react-native-maps": "1.18.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
