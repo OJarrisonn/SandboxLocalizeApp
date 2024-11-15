@@ -1,87 +1,49 @@
 import { useState, useEffect } from 'react';
-import { Platform, Text, View, StyleSheet, Button } from 'react-native';
+import { Text, View, StyleSheet, Button } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as Device from 'expo-device';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
+import { useLocation } from '@/hooks/useLocation';
 
-const LOCATION_TASK_NAME = 'BACKGROUND_LOCATION_TASK';
 
 export default function Index() {
+  const locator = useLocation();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [locations, setLocations] = useState<{latitude: number, longitude: number}[]>([]);
-  const [locating, setLocating] = useState(false);
-
-  async function startBackgroundLocationTask() {
-    if (Platform.OS === 'android' && !Device.isDevice) {
-      setErrorMsg(
-        'Oops, this will not work on Snack in an Android Emulator. Try it on your device!'
-      );
-      return;
-    }
-
-    const { status } = await Location.requestBackgroundPermissionsAsync();
-
-    if (status === 'granted') {
-      setLocations([]);
-      setLocating(true);
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 5000, // 5 seconds
-        distanceInterval: 0,
-      });
-    } else {
-      setErrorMsg('Permission to access background location was denied');
-    }
-  }
-
-  async function stopBackgroundLocationTask() {
-    await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-    setLocating(false);
-    setLocations([]);
-  }
 
   async function copyGeoJSONLine() {
-    const line = JSON.stringify(createGeoJSONLine(locations));
+    const line = JSON.stringify(createGeoJSONLine(locator.popLocations().map(location => location.coords)));
     await Clipboard.setStringAsync(line);
     console.log('GeoJSON Line:', line);
-    setLocations([]);
   }
 
   useEffect(() => {
-    TaskManager.defineTask(LOCATION_TASK_NAME, async () => {
-      try {
-        const location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-        setLocations([...locations, {latitude: location.coords.latitude, longitude: location.coords.longitude}]);
-        console.log('New location:', location);
-        console.log('Locations:', JSON.stringify(locations));
-        return BackgroundFetch.BackgroundFetchResult.NewData;
-      } catch (error) {
-        console.error(error);
-        return BackgroundFetch.BackgroundFetchResult.Failed;
+    const askPermissions = async () => {
+      const status = await locator.askPermissions();
+      if (status !== 'granted') {
+        console.error('Location permission denied');
+      } else {
+        console.log('Location permission granted');
       }
-    });
+      locator.subscribeToLocationUpdates('index', setLocation);
+      locator.subscribeToLocationUpdates('logger', location => console.log('New Location:', location));
+    };
+
+    askPermissions();
   }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.paragraph}>Background Location</Text>
-      <Text style={styles.paragraph}>{locating ? 'Locating...' : 'Not locating'}</Text>
-      <Text style={styles.paragraph}>Samples taken: {locations.length}</Text>
-      {errorMsg 
-      ? <Text style={styles.paragraph}>Error: {errorMsg}</Text> 
-      : location 
+      <Text style={styles.paragraph}>{locator.locating ? 'Locating...' : 'Not locating'}</Text>
+      <Text style={styles.paragraph}>Samples taken: {locator.locations.length}</Text>
+      {location 
         ? <Text style={styles.paragraph}>
-          Last location: ({location.coords.latitude}, {location.coords.longitude}){"\n"}
-          Accuracy: {location.coords.accuracy}m{"\n"}
-          Time: {new Date(location.timestamp).toLocaleTimeString()}
+          Last location: ({location?.coords.latitude}, {location?.coords.longitude}){"\n"}
+          Accuracy: {location?.coords.accuracy}m{"\n"}
+          Time: {new Date(location?.timestamp).toLocaleTimeString()}
           </Text> 
         : <Text style={styles.paragraph}>Waiting...</Text>}
-      <Button title="Start Location" onPress={startBackgroundLocationTask} />
-      <Button title="Stop Location" onPress={stopBackgroundLocationTask} />
+      <Button title="Start Location" onPress={async () => await locator.startLocationUpdates()} />
+      <Button title="Stop Location" onPress={async () => await locator.stopLocationUpdates()} />
       <Button title="Produce GeoJSON Line" onPress={copyGeoJSONLine} />
     </View>
   );
