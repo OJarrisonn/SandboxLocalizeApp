@@ -1,11 +1,10 @@
-export type OnLoadEventPayload = {
-  url: string;
-};
-
 export type ActivityRecognitionModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
+  onActivityUpdate: (activity: ActivityData) => void;
 };
 
-export type ChangeEventPayload = {
-  value: string;
+export type ActivityData = {
+  type: string;
+  confidence: number;
 };
+
+export type ActivityType = "EM_VEICULO" | "NA_BICICLETA" | "A_PE" | "CORRENDO" | "PARADO" | "CAMINHANDO"
