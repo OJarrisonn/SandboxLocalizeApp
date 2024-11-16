@@ -1,0 +1,15 @@
+{
+  "platforms": [
+    "android"
+  ],
+  "apple": {
+    "modules": [
+      "ActivityRecognitionModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "com.ojarrisonn.ActivityRecognition.ActivityRecognitionModule"
+    ]
+  }
+}
